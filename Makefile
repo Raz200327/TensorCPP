@@ -1,13 +1,19 @@
+.PHONY: clean run new_run main.o source.o
+COMPILER = g++
+
 source.o:
-	@clang++ -c source.cpp
+	@$(COMPILER) -c source.cpp
 
 main.o:
-	@clang++ -c main.cpp
+	@$(COMPILER) -c main.cpp
 
-new_run: source.o main.cpp
-	@clang++ -c main.cpp
-	@clang++ main.o source.o -o run
+new-run: source.o main.cpp
+	@$(COMPILER) -c main.cpp
+	@$(COMPILER) main.o source.o -o run
 	@./run
 run: source.o main.o
-	@clang++ main.o source.o -o run
+	@$(COMPILER) main.o source.o -o run
 	@./run
+
+clean:
+	@rm *.o run

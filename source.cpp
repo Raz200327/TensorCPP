@@ -4,22 +4,23 @@
 #include "linalg/tensor.h"
 
 std::ostream& operator<<(std::ostream& os, const Tensor& obj){
-    os << "[";
+    os << "[[";
     for (int i = 0; i < obj.h; i++){
         for (int a = 0; a < obj.w; a++){
             if (i > 0 && a == 0){
                 os << " ";
             }
             if ((a == obj.w - 1) && (i == obj.h - 1)){
-                os << obj.vals[i][a] << "]\n";
+                os << obj.vals[i][a] << "]]";
             }
             else if (a == obj.w - 1){
-                os << obj.vals[i][a] << ",\n";
+                os << obj.vals[i][a] << "]";
             }
             else {
                 os << obj.vals[i][a] << ", ";
             }
         }
+        os << std::endl;
     }
     return os;
 }
