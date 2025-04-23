@@ -1,3 +1,5 @@
+.PHONY: source.o main.o new_run run clean
+
 source.o:
 	@clang++ -c source.cpp
 
@@ -11,3 +13,6 @@ new_run: source.o main.cpp
 run: source.o main.o
 	@clang++ main.o source.o -o run
 	@./run
+
+clean:
+	@rm *.o run
