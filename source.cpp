@@ -3,6 +3,8 @@
 #include <random>
 #include <fstream>
 #include <string>
+#include <sstream>
+#include <tuple>
 #include "linalg/tensor.h"
 
 std::ostream& operator<<(std::ostream& os, const Tensor& obj){
@@ -79,20 +81,42 @@ void Tensor::transpose(){
     this->h = w_temp;
 }
 
-void fillMatrix(std::vector<std::vector<float> >& mat, int h, int w){
+void Tensor::fillTensor(){
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dist(1, 10);
-    mat.resize(h, std::vector<float>(w));
-    for (int i = 0; i < h; i++){
-        for (int a = 0; a < w; a++){
-            mat[i][a] = dist(gen);
+    for (int i = 0; i < this->h; i++){
+        for (int a = 0; a < this->w; a++){
+            (*this->vals)[i][a] = dist(gen);
         }
     }
 }
 
+std::string Tensor::shape(){
+    return "(" + std::to_string(this->h) + ", " + std::to_string(this->w) + ")";
+}
+
 void loadWeights(Tensor &tensor, std::string file_path){
+
     std::ifstream file(file_path);
     std::string line;
+    if (!file.is_open()) {
+        std::cerr << "Could not open the file " << file_path << std::endl;
+        
+    }
+    int i = 0;
+    
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string value;
+        int j = 0;
+        while (std::getline(ss, value, ',')) {
+            (*tensor.vals)[i][j] = std::stof(value);
+            j++;
+        }
+        i++;
+    }
+
+    file.close();
 }
 
