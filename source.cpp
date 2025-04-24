@@ -36,11 +36,20 @@ Tensor::Tensor(std::vector<std::vector<float> > *vals, int h, int w){
     this->w = w;
 }
 
+void ReLU(Tensor &tensor){
+    for (int i = 0; i < tensor.h; i++){
+        for (int a = 0; a < tensor.w; a++){
+            if ((*tensor.vals)[i][a] < 0){
+                (*tensor.vals)[i][a] = 0;
+            }
+        }
+    }
+}
+
 Tensor Tensor::matMul(const Tensor &v2){
     std::vector<std::vector<float> > *result = new std::vector<std::vector<float> >(this->vals->size(), std::vector<float>((*v2.vals)[0].size()));
     if ((*v2.vals).size() != (*this->vals)[0].size()){
-        std::cerr << "Error cannot multiply matrices with sizes: " << "(" << (*this->vals).size() << ", " << (*this->vals)[0].size() <<
-        ") " << "(" << (*v2.vals).size() << ", " << (*v2.vals)[0].size() << ")" << std::endl;
+        std::cerr << "Error cannot multiply matrices with sizes: " << this->shape() << " and " << v2.shape() << std::endl;
         std::exit(1);
     }
     for (int i = 0; i < this->vals->size(); i++){
@@ -84,7 +93,7 @@ void Tensor::transpose(){
 void Tensor::fillTensor(){
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(1, 10);
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
     for (int i = 0; i < this->h; i++){
         for (int a = 0; a < this->w; a++){
             (*this->vals)[i][a] = dist(gen);
@@ -92,7 +101,7 @@ void Tensor::fillTensor(){
     }
 }
 
-std::string Tensor::shape(){
+std::string Tensor::shape() const {
     return "(" + std::to_string(this->h) + ", " + std::to_string(this->w) + ")";
 }
 

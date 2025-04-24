@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include <tuple>
+#include <functional>
 
 class Tensor{
     public:
@@ -16,9 +16,17 @@ class Tensor{
     Tensor matMul(const Tensor &v2);
     void transpose();
     void fillTensor();
-    std::string shape();
+    std::string shape() const;
     friend std::ostream& operator<<(std::ostream& os, const Tensor& obj);
     ~Tensor();
+};
+
+void ReLU(Tensor &tensor);
+
+
+class Model{
+    public:
+    std::vector<Tensor> layers;
 };
 
 void loadWeights(Tensor &tensor, std::string file_path);

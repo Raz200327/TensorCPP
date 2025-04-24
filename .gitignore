@@ -3,3 +3,5 @@
 run
 venv/
 *.pth
+model_info/
+.DS_Store
