@@ -2,17 +2,17 @@
 COMPILER = g++
 
 source.o:
-	@$(COMPILER) -c source.cpp
+	@$(COMPILER) -std=c++11 -c source.cpp
 
 main.o:
-	@$(COMPILER) -c main.cpp
+	@$(COMPILER) -std=c++11 -c main.cpp
 
 new-run: source.o main.cpp
-	@$(COMPILER) -c main.cpp
-	@$(COMPILER) main.o source.o -o run
+	@$(COMPILER) -std=c++11 -c main.cpp
+	@$(COMPILER) -std=c++11 main.o source.o -o run
 	@./run
 run: source.o main.o
-	@$(COMPILER) main.o source.o -o run
+	@$(COMPILER) -std=c++11 main.o source.o -o run
 	@./run
 
 clean:
