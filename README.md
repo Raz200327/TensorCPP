@@ -67,23 +67,6 @@ layer.Softmax();
 std::cout << "Output: " << layer << std::endl;
 ```
 
-## 🧪 Neural Network Example
-
-The library includes a complete MNIST neural network implementation:
-
-- **Architecture**: 784 → 128 → 64 → 10 (fully connected)
-- **Activations**: ReLU for hidden layers, Softmax for output
-- **Pre-trained**: Includes weights trained on MNIST dataset
-- **Inference**: Ready-to-run classification on test data
-
-## 🔗 PyTorch Integration
-
-The `test.py` script demonstrates:
-- PyTorch model training on MNIST
-- Weight export to CSV format
-- Data preprocessing and normalization
-- Model evaluation and accuracy reporting
-
 ## 📊 Performance
 
 - **Memory Efficient**: Shared pointer-based tensor storage
