@@ -26,8 +26,6 @@
 
 ### 🔧 Development Tools
 - **Makefile Build System**: Simple compilation with `make run`
-- **PyTorch Integration**: Python scripts for model training and weight export
-- **Validation Tools**: CSV file validation and shape checking
 
 ## 📦 Project Structure
 
