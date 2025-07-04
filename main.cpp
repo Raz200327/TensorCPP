@@ -2,6 +2,9 @@
 #include <vector>
 #include "linalg/tensor.h"
 #include <algorithm> 
+#include <unordered_map>
+#include <string>
+
 int main(){
 
     /*
@@ -33,8 +36,8 @@ int main(){
     v5.Softmax();
     std::cout << v5 << std::endl;
     v5.loadWeights("./weights/net_1_weight.csv");
-
-    */
+    --------------------------------------------------------------
+ 
     Tensor v1("./weights/test_data.csv", 10000, 784);
     std::cout << "Loaded data" << std::endl;
     Tensor w1("./weights/net_1_weight.csv", 784, 128);
@@ -60,5 +63,18 @@ int main(){
             std::cout << "Max value: " << *max_it << ", at index: " << max_index << std::endl;
         }
     }
-    
+    */
+    std::unordered_map<std::string, int> config;
+    config["n_emb_h"] = 5;
+    Tensor v1(5, 2);
+    v1.randInit();
+    std::cout << "Tensor v1:" << std::endl;
+    std::cout << v1 << std::endl;
+    std::cout << "Transposing v1:" << std::endl;
+    v1.transpose();
+    std::cout << v1 << std::endl;
+    CausalSelfAttentionSingleHead csa(config);
+    Tensor result = csa.forward(v1);
+    std::cout << "Result:" << std::endl;
+    std::cout << result << std::endl;
 }
