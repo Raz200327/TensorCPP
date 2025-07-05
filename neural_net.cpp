@@ -3,6 +3,9 @@
 //Neural Network
 
 NeuralNetwork::NeuralNetwork(){
+    this->theta = 1;
+    this->beta = 0;
+    this->eps = 1e-5;
     for (int i = 0; i < 3; i++){
         Tensor layer(2, 2);
         layer.randInit();
@@ -26,3 +29,4 @@ Tensor NeuralNetwork::forward(const Tensor &input){
     }
     return result;
 }
+

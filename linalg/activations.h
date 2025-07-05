@@ -20,4 +20,9 @@ class Softmax : public ActivationFunction {
     void apply(Tensor &tensor) override;
 };
 
+class GELU : public ActivationFunction {
+    public:
+    void apply(Tensor &tensor) override;
+};
+
 #endif

@@ -9,10 +9,6 @@
 //Constructors
 
 Tensor::Tensor(int h, int w){
-    if ((w == 0) || (h == 0)){
-        std::cerr << "Cannot create tensor with dimension " << h << ", " << w << std::endl;
-        std::exit(1);
-    }
     this->vals = std::make_shared<std::vector<std::vector<float> > >(h, std::vector<float>(w, 0.0f));
     this->w = w;
     this->h = h;
@@ -71,12 +67,16 @@ Tensor Tensor::createMask(int h, int w){
     for (int i = 0; i < h; i++){
         for (int a = 0; a < w; a++){
             if (a <= i){
-                (*vals)[i][a] = 1;
+                (*vals)[i][a] = 0.0f;
             }
         }
     }
     Tensor mask(vals, h, w);
     return mask;
+}
+
+std::string Tensor::shape() const{
+    return "(" + std::to_string(this->h) + ", " + std::to_string(this->w) + ")";
 }
 
 //Operators
@@ -123,9 +123,8 @@ Tensor Tensor::matMul(const Tensor &v2) const{
         }
     }
     Tensor newTensor(result, this->vals->size(), v2.vals->at(0).size());
-    return newTensor;
-}  
-
+    return newTensor;   
+} 
 
 void Tensor::randInit(){
     
@@ -143,6 +142,51 @@ void Tensor::randInit(){
 
 }
 
+Tensor Tensor::layerNorm(const Tensor &v2) const{
+    float theta = 1;
+    float beta = 0;
+    float eps = 1e-5;
+    Tensor result(this->h, this->w);
+    for (int h = 0; h < this->h; h++){
+        float mean = 0;
+        for (int w = 0; w < this->w; w++){
+            mean += (*this->vals)[h][w];
+        }
+        mean = mean / this->w;  
+        float variance = 0;
+        for (int w = 0; w < this->w; w++){
+            variance += std::pow((*this->vals)[h][w] - mean, 2);
+        }
+        variance = variance / this->w;
+        for (int w = 0; w < this->w; w++){
+            (*result.vals)[h][w] = theta * (((*this->vals)[h][w] - mean) / std::sqrt(variance + eps)) + beta;
+        }
+    }
+    return result;
+}
+
+void Tensor::concat(const Tensor &v2){
+    if (this->h != v2.h){
+        std::cerr << "Cannot concat tensors with different heights!" << std::endl;
+        std::exit(1);
+    }
+    int old_w = this->w;
+    this->w += v2.w;
+    std::shared_ptr<std::vector<std::vector<float> > > newVals = std::make_shared<std::vector<std::vector<float> > >(this->h, std::vector<float>(this->w, 0.0f));
+    for (int h = 0; h < this->h; h++){
+        for (int w = 0; w < this->w; w++){
+            if (w < old_w){
+                (*newVals)[h][w] = (*this->vals)[h][w];
+            }
+            else {
+                (*newVals)[h][w] = (*v2.vals)[h][w - old_w];
+            }
+        }
+    }
+    this->vals = newVals;
+}
+
+//Operators
 
 Tensor operator+(const Tensor& a, const Tensor& b){
     if (!(a.w == b.w)){

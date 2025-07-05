@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <string>
 #include "linalg/transformer.h"
+#include "linalg/activations.h"
 
 int main(){
 
@@ -66,15 +67,11 @@ int main(){
     }
     */
     std::unordered_map<std::string, int> config;
-    config["n_emb_h"] = 5;
-    Tensor v1(5, 2);
+    config["n_emb"] = 10;
+    config["n_heads"] = 2;
+    Tensor v1(3, 10);
     v1.randInit();
-    std::cout << "Tensor v1:" << std::endl;
-    std::cout << v1 << std::endl;
-    std::cout << "Transposing v1:" << std::endl;
-    v1.transpose();
-    std::cout << v1 << std::endl;
-    CausalSelfAttentionSingleHead csa(config);
+    CausalSelfAttention csa(config);
     Tensor result = csa.forward(v1);
     std::cout << "Result:" << std::endl;
     std::cout << result << std::endl;

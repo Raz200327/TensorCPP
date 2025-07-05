@@ -21,8 +21,11 @@ class Tensor{
     Tensor& operator=(const Tensor& result);
     Tensor& operator=(Tensor&& result) noexcept;
     Tensor matMul(const Tensor &v2) const;
-    void randInit();                                
+    Tensor layerNorm(const Tensor &v2) const;
+    void concat(const Tensor &v2);
+    void randInit();           
     void transpose();
+    std::string shape() const;
     static Tensor createMask(int h, int w);
     friend std::ostream& operator<<(std::ostream& os, const Tensor& obj);
     friend Tensor operator+(const Tensor& a, const Tensor& b);

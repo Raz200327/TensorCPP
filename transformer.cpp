@@ -2,9 +2,9 @@
 #include "linalg/activations.h"
 
 CausalSelfAttentionSingleHead::CausalSelfAttentionSingleHead(const std::unordered_map<std::string, int> &config)
-    : q_h(Tensor(config.at("n_emb_h"), config.at("n_emb_h"))),
-      k_h(Tensor(config.at("n_emb_h"), config.at("n_emb_h"))),
-      v_h(Tensor(config.at("n_emb_h"), config.at("n_emb_h"))),
+    : q_h(Tensor(config.at("n_emb"), config.at("n_emb")/config.at("n_heads"))),
+      k_h(Tensor(config.at("n_emb"), config.at("n_emb")/config.at("n_heads"))),
+      v_h(Tensor(config.at("n_emb"), config.at("n_emb")/config.at("n_heads"))),
       config(config) {
     this->q_h.randInit();
     this->k_h.randInit();
@@ -21,7 +21,7 @@ Tensor CausalSelfAttentionSingleHead::forward(const Tensor &input){
     std::cout << mask << std::endl;
     k.transpose();
     Tensor att = q.matMul(k);
-    att = att / std::sqrt(this->config.at("n_emb_h"));
+    att = att / std::sqrt(this->config.at("n_emb") / this->config.at("n_heads"));
     att = att + mask;
     std::cout << "Att:" << std::endl;
     std::cout << att << std::endl;
@@ -30,5 +30,37 @@ Tensor CausalSelfAttentionSingleHead::forward(const Tensor &input){
     std::cout << "Att after softmax:" << std::endl;
     std::cout << att << std::endl;
     Tensor result = att.matMul(v);
+    return result;
+}
+
+CausalSelfAttention::CausalSelfAttention(const std::unordered_map<std::string, int> &config): c_proj(Tensor(config.at("n_emb"), config.at("n_emb"))){
+    this->config = config;
+    for (int i = 0; i < config.at("n_heads"); i++){
+        this->heads.push_back(CausalSelfAttentionSingleHead(config));
+    }
+    this->c_proj.randInit();
+}
+
+Tensor CausalSelfAttention::forward(const Tensor &input){
+    Tensor result(input.h, 0);
+    for (int i = 0; i < this->config.at("n_heads"); i++){
+        result.concat(this->heads[i].forward(input));
+    }
+    result = result.matMul(this->c_proj);
+    return result;
+}
+
+MLP::MLP(const std::unordered_map<std::string, int> &config)
+    : c_fc(Tensor(config.at("n_emb"), config.at("n_emb")*4)),
+      c_proj(Tensor(config.at("n_emb")*4, config.at("n_emb"))),
+      gelu(GELU()) {
+    this->c_fc.randInit();
+    this->c_proj.randInit();
+}
+
+Tensor MLP::forward(const Tensor &input){
+    Tensor result = input.matMul(this->c_fc);
+    this->gelu.apply(result);
+    result = result.matMul(this->c_proj);
     return result;
 }
