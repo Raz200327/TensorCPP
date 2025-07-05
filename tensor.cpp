@@ -1,101 +1,185 @@
+#include "linalg/tensor.h"
 #include <iostream>
 #include <vector>
 #include <random>
 #include <sstream>
 #include <fstream>
-#include "linalg/tensor.h"
 #include <limits>
 
-//Constructors
-
-Tensor::Tensor(int h, int w){
-    this->vals = std::make_shared<std::vector<std::vector<float> > >(h, std::vector<float>(w, 0.0f));
-    this->w = w;
-    this->h = h;
+// Element access
+float& Tensor::operator()(int i, int j){
+    return (*this->vals)[i * this->w + j];
 }
 
-Tensor::Tensor(std::shared_ptr<std::vector<std::vector<float> > > vals, int h, int w){
-    if ((w == 0) || (h == 0)){
+const float& Tensor::operator()(int i, int j) const{
+    return (*this->vals)[i * this->w + j];
+}
+
+// Constructors
+Tensor::Tensor(int h, int w) : h(h), w(w) {
+    this->vals = std::make_shared<std::vector<float>>(h * w, 0.0f);  // Flat storage!
+}
+
+Tensor::Tensor(std::shared_ptr<std::vector<float>> vals, int h, int w) : vals(vals), h(h), w(w) {
+    if ((w == 0) || (h == 0) || vals->size() != h * w){
         std::cerr << "Cannot create tensor with dimension " << h << ", " << w << std::endl;
         std::exit(1);
     }
-    this->vals = vals;
-    this->h = h;
-    this->w = w;
 }
 
-Tensor::Tensor(std::string path, int h, int w){
-    this->w = w;
-    this->h = h;
+Tensor::Tensor(std::string path, int h, int w) : h(h), w(w) {
+    this->vals = std::make_shared<std::vector<float>>(h * w, 0.0f);
+    
     std::ifstream file(path);
     if (!file.is_open()){
         std::cerr << "Unable to open file!" << std::endl;
         std::exit(1);
     }
+    
     std::string line;
-    this->vals = std::make_shared<std::vector<std::vector<float> > >(h, std::vector<float>(w, 0.0f));
     int h_i = 0;
-    int w_i = 0;
-    while (std::getline(file, line)) {
-
-        std::vector<float> row;
+    while (std::getline(file, line) && h_i < h) {
         std::stringstream ss(line);
         std::string cell;
-
-        while (std::getline(ss, cell, ',')) {
-            (*this->vals)[h_i][w_i] = std::stof(cell);
+        int w_i = 0;
+        
+        while (std::getline(ss, cell, ',') && w_i < w) {
+            (*this->vals)[h_i * w + w_i] = std::stof(cell);
             w_i++;
         }
-        w_i = 0;
         h_i++;
-    }              
+    }
 }
 
-Tensor::Tensor(const Tensor& other){
-    this->vals = other.vals;
-    this->h = other.h;
-    this->w = other.w;
+Tensor::Tensor(const Tensor& other) : vals(other.vals), h(other.h), w(other.w) {}
+
+
+void Tensor::concat(const Tensor& other){
+    if (this->h != other.h){
+        std::cerr << "Cannot concatenate tensors with different heights!" << std::endl;
+        std::exit(1);
+    }
+    Tensor result(this->h, this->w + other.w);
+    for (int i = 0; i < this->h; i++){
+        for (int j = 0; j < this->w; j++){
+            (*result.vals)[i * (this->w + other.w) + j] = (*this->vals)[i * this->w + j];
+        }
+    }
+    for (int i = 0; i < this->h; i++){
+        for (int j = 0; j < other.w; j++){
+            (*result.vals)[i * (this->w + other.w) + this->w + j] = (*other.vals)[i * other.w + j];
+        }
+    }
+    this->vals = result.vals;
+    this->w = result.w;
 }
 
+Tensor Tensor::matMul(const Tensor& other) const {
+    if (this->w != other.h) {
+        std::cerr << "Matrix dimension mismatch!" << std::endl;
+        std::exit(1);
+    }
+    
+    Tensor result(this->h, other.w);
+    
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                this->h, other.w, this->w,
+                1.0f,
+                this->vals->data(), this->w,
+                other.vals->data(), other.w,
+                0.0f,
+                result.vals->data(), other.w);
+    
+    return result;
+}
 
 Tensor Tensor::createMask(int h, int w){
     if (h != w){
         std::cerr << "Cannot create mask with dimensions: " << h << ", " << w << std::endl;
         std::exit(1);
     }
-    std::shared_ptr<std::vector<std::vector<float> > > vals = std::make_shared<std::vector<std::vector<float> > >(h, std::vector<float>(w, -std::numeric_limits<float>::infinity()));
+    
+    auto vals = std::make_shared<std::vector<float>>(h * w, -std::numeric_limits<float>::infinity());
+    
     for (int i = 0; i < h; i++){
         for (int a = 0; a < w; a++){
             if (a <= i){
-                (*vals)[i][a] = 0.0f;
+                (*vals)[i * w + a] = 0.0f;  // Flat indexing
             }
         }
     }
-    Tensor mask(vals, h, w);
-    return mask;
+    
+    return Tensor(vals, h, w);
 }
 
-std::string Tensor::shape() const{
-    return "(" + std::to_string(this->h) + ", " + std::to_string(this->w) + ")";
+
+void Tensor::randInit(){
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    float scale = std::sqrt(2.0f / (h + w));
+    std::normal_distribution<float> dist(0.0f, scale);
+    
+    for (int i = 0; i < h * w; i++){  // Iterate over flat array
+        (*this->vals)[i] = dist(gen);
+    }
 }
 
-//Operators
+Tensor Tensor::layerNorm(const Tensor& v2) const{
+    float theta = 1;
+    float beta = 0;
+    float eps = 1e-5;
+    Tensor result(this->h, this->w);
+    
+    for (int row = 0; row < this->h; row++){
+        float mean = 0;
+        for (int col = 0; col < this->w; col++){
+            mean += (*this->vals)[row * this->w + col];  // Flat indexing
+        }
+        mean = mean / this->w;
+        
+        float variance = 0;
+        for (int col = 0; col < this->w; col++){
+            float val = (*this->vals)[row * this->w + col];
+            variance += std::pow(val - mean, 2);
+        }
+        variance = variance / this->w;
+        
+        for (int col = 0; col < this->w; col++){
+            float val = (*this->vals)[row * this->w + col];
+            (*result.vals)[row * this->w + col] = theta * ((val - mean) / std::sqrt(variance + eps)) + beta;
+        }
+    }
+    return result;
+}
+
+void Tensor::transpose(){
+    auto newVals = std::make_shared<std::vector<float>>(h * w, 0.0f);
+    
+    for (int i = 0; i < this->h; i++){
+        for (int j = 0; j < this->w; j++){
+            (*newVals)[j * this->h + i] = (*this->vals)[i * this->w + j];  // Transpose indexing
+        }
+    }
+    
+    this->vals = newVals;
+    std::swap(this->h, this->w);
+}
 
 std::ostream& operator<<(std::ostream& os, const Tensor& obj){
     os << "[[";
     for (int i = 0; i < obj.h; i++){
-        for (int a = 0; a < obj.w; a++){
-            if (i > 0 && a == 0){
+        for (int j = 0; j < obj.w; j++){
+            if (i > 0 && j == 0){
                 os << " ";
             }
-            if ((a == obj.w - 1) && (i == obj.h - 1)){
-                os << (*obj.vals)[i][a] << "]]";
+            if ((j == obj.w - 1) && (i == obj.h - 1)){
+                os << (*obj.vals)[i * obj.w + j] << "]]";  // Flat indexing
             }
-            else if (a == obj.w - 1){
-                os << (*obj.vals)[i][a] << "]";
+            else if (j == obj.w - 1){
+                os << (*obj.vals)[i * obj.w + j] << "]";
             }
             else {
-                os << (*obj.vals)[i][a] << ", ";
+                os << (*obj.vals)[i * obj.w + j] << ", ";
             }
         }
         os << std::endl;
@@ -103,124 +187,35 @@ std::ostream& operator<<(std::ostream& os, const Tensor& obj){
     return os;
 }
 
-
-Tensor Tensor::matMul(const Tensor &v2) const{
-    
-    std::shared_ptr<std::vector<std::vector<float> > > result = std::make_shared<std::vector<std::vector<float> > >
-    (this->vals->size(), std::vector<float>(v2.vals->at(0).size()));
-    if (v2.vals->size() != this->vals->at(0).size()){
-        std::cerr << "Error cannot multiply matrices with sizes: " << "(" << this->vals->size() << ", " << this->vals->at(0).size() <<
-        ") " << "(" << v2.vals->size() << ", " << v2.vals->at(0).size() << ")" << std::endl;
-        std::exit(1);
-    }
-    for (int i = 0; i < this->vals->size(); i++){
-        for (int a = 0; a < v2.vals->at(0).size(); a++){
-            float val = 0;
-            for (int j = 0; j< this->vals->at(0).size(); j++){
-                val += (*this->vals)[i][j] * (*v2.vals)[j][a]; 
-            }
-            (*result)[i][a] = val;
-        }
-    }
-    Tensor newTensor(result, this->vals->size(), v2.vals->at(0).size());
-    return newTensor;   
-} 
-
-void Tensor::randInit(){
-    
-    int h = this->h;
-    int w = this->w;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    float scale = std::sqrt(2.0f / (h + w));
-    std::normal_distribution<float> dist(0.0f, scale);
-    for (int i = 0; i < h; i++){
-        for (int a = 0; a < w; a++){
-            (*this->vals)[i][a] = dist(gen);
-        }
-    }
-
-}
-
-Tensor Tensor::layerNorm(const Tensor &v2) const{
-    float theta = 1;
-    float beta = 0;
-    float eps = 1e-5;
-    Tensor result(this->h, this->w);
-    for (int h = 0; h < this->h; h++){
-        float mean = 0;
-        for (int w = 0; w < this->w; w++){
-            mean += (*this->vals)[h][w];
-        }
-        mean = mean / this->w;  
-        float variance = 0;
-        for (int w = 0; w < this->w; w++){
-            variance += std::pow((*this->vals)[h][w] - mean, 2);
-        }
-        variance = variance / this->w;
-        for (int w = 0; w < this->w; w++){
-            (*result.vals)[h][w] = theta * (((*this->vals)[h][w] - mean) / std::sqrt(variance + eps)) + beta;
-        }
-    }
-    return result;
-}
-
-void Tensor::concat(const Tensor &v2){
-    if (this->h != v2.h){
-        std::cerr << "Cannot concat tensors with different heights!" << std::endl;
-        std::exit(1);
-    }
-    int old_w = this->w;
-    this->w += v2.w;
-    std::shared_ptr<std::vector<std::vector<float> > > newVals = std::make_shared<std::vector<std::vector<float> > >(this->h, std::vector<float>(this->w, 0.0f));
-    for (int h = 0; h < this->h; h++){
-        for (int w = 0; w < this->w; w++){
-            if (w < old_w){
-                (*newVals)[h][w] = (*this->vals)[h][w];
-            }
-            else {
-                (*newVals)[h][w] = (*v2.vals)[h][w - old_w];
-            }
-        }
-    }
-    this->vals = newVals;
-}
-
-//Operators
-
 Tensor operator+(const Tensor& a, const Tensor& b){
     if (!(a.w == b.w)){
         std::cerr << "Incorrect shape!" << std::endl;
         std::exit(1);
     } else if ((a.h != b.h) && (b.h == 1)){
         Tensor result(a.h, a.w);
-        for (int h = 0; h < a.h; h++){
-            for (int w = 0; w < a.w; w++){
-                (*result.vals)[h][w] = (*a.vals)[h][w] + (*b.vals)[0][w];
+        for (int i = 0; i < a.h; i++){
+            for (int j = 0; j < a.w; j++){
+                (*result.vals)[i * a.w + j] = (*a.vals)[i * a.w + j] + (*b.vals)[j];  // Flat indexing
             }
         }
         return result;
     } else {
         Tensor result(a.h, a.w);
-        for (int h = 0; h < a.h; h++){
-            for (int w = 0; w < a.w; w++){
-                (*result.vals)[h][w] = (*a.vals)[h][w] + (*b.vals)[h][w];
-            }
+        for (int i = 0; i < a.h * a.w; i++){  // Simple flat iteration
+            (*result.vals)[i] = (*a.vals)[i] + (*b.vals)[i];
         }
         return result;
     }
 }
 
+
 Tensor operator+(const Tensor& a, const float& b){
     Tensor result(a.h, a.w);
-    for (int h = 0; h < a.h; h++){
-        for (int w = 0; w < a.w; w++){
-            (*result.vals)[h][w] = (*a.vals)[h][w] + b;
-        }
+    for (int i = 0; i < a.h * a.w; i++){
+        (*result.vals)[i] = (*a.vals)[i] + b;
     }
     return result;
 }
-
 
 Tensor operator-(const Tensor& a, const Tensor& b){
     if (a.h != b.h || a.w != b.w){
@@ -228,25 +223,19 @@ Tensor operator-(const Tensor& a, const Tensor& b){
         std::exit(1);
     }
     Tensor result(a.h, a.w);
-    for (int h = 0; h < a.h; h++){
-        for (int w = 0; w < a.w; w++){
-            (*result.vals)[h][w] = (*a.vals)[h][w] - (*b.vals)[h][w];
-        }
+    for (int i = 0; i < a.h * a.w; i++){
+        (*result.vals)[i] = (*a.vals)[i] - (*b.vals)[i];
     }
     return result;
 }
-
 
 Tensor operator-(const Tensor& a, const float& b){
     Tensor result(a.h, a.w);
-    for (int h = 0; h < a.h; h++){
-        for (int w = 0; w < a.w; w++){
-            (*result.vals)[h][w] = (*a.vals)[h][w] - b;
-        }
+    for (int i = 0; i < a.h * a.w; i++){
+        (*result.vals)[i] = (*a.vals)[i] - b;
     }
     return result;
 }
-
 
 Tensor operator/(const Tensor& a, const Tensor& b){
     if (a.h != b.h || a.w != b.w){
@@ -254,14 +243,12 @@ Tensor operator/(const Tensor& a, const Tensor& b){
         std::exit(1);
     }
     Tensor result(a.h, a.w);
-    for (int h = 0; h < a.h; h++){
-        for (int w = 0; w < a.w; w++){
-            if ((*b.vals)[h][w] == 0){
-                std::cerr << "Cannot divide by zero!" << std::endl;
-                std::exit(1);
-            }
-            (*result.vals)[h][w] = (*a.vals)[h][w] / (*b.vals)[h][w];
+    for (int i = 0; i < a.h * a.w; i++){
+        if ((*b.vals)[i] == 0){
+            std::cerr << "Cannot divide by zero!" << std::endl;
+            std::exit(1);
         }
+        (*result.vals)[i] = (*a.vals)[i] / (*b.vals)[i];
     }
     return result;
 }
@@ -272,10 +259,8 @@ Tensor operator/(const Tensor& a, const float& b){
         std::exit(1);
     }
     Tensor result(a.h, a.w);
-    for (int h = 0; h < a.h; h++){
-        for (int w = 0; w < a.w; w++){
-            (*result.vals)[h][w] = (*a.vals)[h][w] / b;
-        }
+    for (int i = 0; i < a.h * a.w; i++){
+        (*result.vals)[i] = (*a.vals)[i] / b;
     }
     return result;
 }
@@ -286,22 +271,23 @@ Tensor operator*(const Tensor& a, const Tensor& b){
         std::exit(1);
     }
     Tensor result(a.h, a.w);
-    for (int h = 0; h < a.h; h++){
-        for (int w = 0; w < a.w; w++){
-            (*result.vals)[h][w] = (*a.vals)[h][w] * (*b.vals)[h][w];
-        }
+    for (int i = 0; i < a.h * a.w; i++){
+        (*result.vals)[i] = (*a.vals)[i] * (*b.vals)[i];
     }
     return result;
 }
 
 Tensor operator*(const Tensor& a, const float& b){
     Tensor result(a.h, a.w);
-    for (int h = 0; h < a.h; h++){
-        for (int w = 0; w < a.w; w++){
-            (*result.vals)[h][w] = (*a.vals)[h][w] * b;
-        }
+    for (int i = 0; i < a.h * a.w; i++){
+        (*result.vals)[i] = (*a.vals)[i] * b;
     }
     return result;
+}
+
+
+std::string Tensor::shape() const{
+    return "(" + std::to_string(this->h) + ", " + std::to_string(this->w) + ")";
 }
 
 Tensor& Tensor::operator=(const Tensor& result){
@@ -318,15 +304,4 @@ Tensor& Tensor::operator=(Tensor&& result) noexcept{
         this->w = result.w;
     }
     return (*this);
-}
-
-void Tensor::transpose(){
-    std::shared_ptr<std::vector<std::vector<float> > > newVals = std::make_shared<std::vector<std::vector<float> > >(this->w, std::vector<float>(this->h, 0.0f));
-    for (int i = 0; i < this->h; i++){
-        for (int a = 0; a < this->w; a++){
-            (*newVals)[a][i] = (*this->vals)[i][a];
-        }
-    }
-    this->vals = newVals;
-    std::swap(this->h, this->w);
 }

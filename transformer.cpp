@@ -17,18 +17,12 @@ Tensor CausalSelfAttentionSingleHead::forward(const Tensor &input){
     Tensor k = input.matMul(this->k_h);
     Tensor v = input.matMul(this->v_h);
     Tensor mask = Tensor::createMask(input.h, input.h);
-    std::cout << "Mask:" << std::endl;
-    std::cout << mask << std::endl;
     k.transpose();
     Tensor att = q.matMul(k);
     att = att / std::sqrt(this->config.at("n_emb") / this->config.at("n_heads"));
     att = att + mask;
-    std::cout << "Att:" << std::endl;
-    std::cout << att << std::endl;
     Softmax activation;
     activation.apply(att);
-    std::cout << "Att after softmax:" << std::endl;
-    std::cout << att << std::endl;
     Tensor result = att.matMul(v);
     return result;
 }
