@@ -1,5 +1,5 @@
-#ifndef ACTIVATIONS
-#define ACTIVATIONS
+#ifndef ACTIVATIONS_H
+#define ACTIVATIONS_H
 
 #include "tensor.h"
 
@@ -10,19 +10,18 @@ class ActivationFunction{
 };
 
 class ReLU : public ActivationFunction {
-    public:
-    void apply(Tensor &tensor) override;
+public:
+    void apply(Tensor& tensor) override;
 };
 
-
 class Softmax : public ActivationFunction {
-    public:
-    void apply(Tensor &tensor) override;
+public:
+    void apply(Tensor& tensor) override;
 };
 
 class GELU : public ActivationFunction {
-    public:
-    void apply(Tensor &tensor) override;
+public:
+    void apply(Tensor& tensor) override;
 };
 
 #endif

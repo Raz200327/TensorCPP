@@ -66,13 +66,15 @@ int main(){
         }
     }
     */
+    auto start = std::chrono::high_resolution_clock::now();
     std::unordered_map<std::string, int> config;
-    config["n_emb"] = 10;
-    config["n_heads"] = 2;
-    Tensor v1(3, 10);
+    config["n_emb"] = 1024;
+    config["n_heads"] = 8;
+    Tensor v1(200, 1024);
     v1.randInit();
     CausalSelfAttention csa(config);
     Tensor result = csa.forward(v1);
-    std::cout << "Result:" << std::endl;
-    std::cout << result << std::endl;
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Time taken: " << duration.count() << " seconds" << std::endl;
 }
