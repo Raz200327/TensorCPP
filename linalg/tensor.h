@@ -30,13 +30,12 @@ public:
     const float& operator()(int i, int j) const;
     
     Tensor matMul(const Tensor& other) const;
-    Tensor layerNorm(const Tensor& other) const;
     void concat(const Tensor& other);
     void randInit();
     void transpose();
     std::string shape() const;
     static Tensor createMask(int h, int w);
-    
+    friend Tensor layerNorm(const Tensor& other);
     friend std::ostream& operator<<(std::ostream& os, const Tensor& obj);
     friend Tensor operator+(const Tensor& a, const Tensor& b);
     friend Tensor operator+(const Tensor& a, const float& b);

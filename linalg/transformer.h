@@ -12,7 +12,7 @@ class CausalSelfAttentionSingleHead {
     Tensor k_h;
     Tensor v_h;                                         
     CausalSelfAttentionSingleHead(const std::unordered_map<std::string, int> &config);
-    Tensor forward(const Tensor &input);
+    Tensor forward(const Tensor &input, const Tensor &mask);
 };
 
 class CausalSelfAttention {
@@ -31,6 +31,27 @@ class MLP {
     Tensor c_proj;
     GELU gelu;
     MLP(const std::unordered_map<std::string, int> &config);
+    Tensor forward(const Tensor &input);
+};
+
+
+class Block {
+    public:
+    CausalSelfAttention attn;
+    MLP mlp;
+    Block(const std::unordered_map<std::string, int> &config);
+    Tensor forward(const Tensor &input);
+};
+
+
+class Transformer {
+    public:
+    std::unordered_map<std::string, int> config;
+    std::vector<Block> blocks;
+    Tensor wpe;
+    Tensor wte;
+    Tensor ln_final; 
+    Transformer(const std::unordered_map<std::string, int> &config);
     Tensor forward(const Tensor &input);
 };
 
