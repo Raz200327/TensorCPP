@@ -68,12 +68,16 @@ int main(){
     */
     auto start = std::chrono::high_resolution_clock::now();
     std::unordered_map<std::string, int> config;
-    config["n_emb"] = 1024;
-    config["n_heads"] = 8;
-    Tensor v1(200, 1024);
+    config["n_emb"] = 4096;
+    config["n_heads"] = 16;
+    config["n_layers"] = 24;
+    config["n_vocab"] = 10;
+    config["block_size"] = 5;
+    Transformer transformer(config);
+    Tensor v1(5, 10);
     v1.randInit();
-    CausalSelfAttention csa(config);
-    Tensor result = csa.forward(v1);
+    Tensor result = transformer.forward(v1);
+    std::cout << result << std::endl;
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     std::cout << "Time taken: " << duration.count() << " seconds" << std::endl;

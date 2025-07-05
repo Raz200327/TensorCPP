@@ -124,29 +124,29 @@ void Tensor::randInit(){
     }
 }
 
-Tensor Tensor::layerNorm(const Tensor& v2) const{
+Tensor layerNorm(const Tensor& other){
     float theta = 1;
     float beta = 0;
     float eps = 1e-5;
-    Tensor result(this->h, this->w);
+    Tensor result(other.h, other.w);
     
-    for (int row = 0; row < this->h; row++){
+    for (int row = 0; row < other.h; row++){
         float mean = 0;
-        for (int col = 0; col < this->w; col++){
-            mean += (*this->vals)[row * this->w + col];  // Flat indexing
+        for (int col = 0; col < other.w; col++){
+            mean += (*other.vals)[row * other.w + col];  // Flat indexing
         }
-        mean = mean / this->w;
+        mean = mean / other.w;
         
         float variance = 0;
-        for (int col = 0; col < this->w; col++){
-            float val = (*this->vals)[row * this->w + col];
+        for (int col = 0; col < other.w; col++){
+            float val = (*other.vals)[row * other.w + col];
             variance += std::pow(val - mean, 2);
         }
-        variance = variance / this->w;
+        variance = variance / other.w;
         
-        for (int col = 0; col < this->w; col++){
-            float val = (*this->vals)[row * this->w + col];
-            (*result.vals)[row * this->w + col] = theta * ((val - mean) / std::sqrt(variance + eps)) + beta;
+        for (int col = 0; col < other.w; col++){
+            float val = (*other.vals)[row * other.w + col];
+            (*result.vals)[row * other.w + col] = theta * ((val - mean) / std::sqrt(variance + eps)) + beta;
         }
     }
     return result;
@@ -170,7 +170,7 @@ std::ostream& operator<<(std::ostream& os, const Tensor& obj){
     for (int i = 0; i < obj.h; i++){
         for (int j = 0; j < obj.w; j++){
             if (i > 0 && j == 0){
-                os << " ";
+                os << " [";
             }
             if ((j == obj.w - 1) && (i == obj.h - 1)){
                 os << (*obj.vals)[i * obj.w + j] << "]]";  // Flat indexing
